@@ -385,21 +385,52 @@ with tab_reg:
                 encoding, ok, msg = encode_face(face_img)
 
             if not ok:
-                st.markdown(f'<div class="error-box">{msg}<br><small>User was not saved.</small></div>', unsafe_allow_html=True)
+                if "face_recognition library not installed" in msg.lower():
+                    normalized_emp_id = emp_id.strip().upper()
+                    photo_dir = os.path.join(os.path.dirname(__file__), "data", "faces")
+                    os.makedirs(photo_dir, exist_ok=True)
+                    photo_path = os.path.join(photo_dir, f"{normalized_emp_id}.jpg")
+                    face_img.save(photo_path)
+
+                    success, db_msg = add_user(
+                        name=name.strip(),
+                        employee_id=normalized_emp_id,
+                        department=dept.strip() or None,
+                        role=role,
+                        face_encoding=None,
+                        photo_path=photo_path,
+                        is_in_food_program=1 if is_in_food_program else 0,
+                    )
+                    if success:
+                        st.session_state.pop("reg_face_bytes", None)
+                        st.markdown(
+                            '<div class="info-box">Face engine is unavailable right now. User was saved without face encoding. '
+                            'Re-register this user photo after deployment fixes complete.</div>',
+                            unsafe_allow_html=True,
+                        )
+                        st.rerun()
+                    else:
+                        st.markdown(f'<div class="error-box">{db_msg}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="error-box">{msg}<br><small>User was not saved.</small></div>', unsafe_allow_html=True)
             else:
                 try:
-                    import face_recognition
                     known_users = get_all_face_encodings()
                     is_duplicate = False
                     duplicate_name = ""
                     
                     if known_users:
-                        all_known_encs = [u["encoding"] for u in known_users]
-                        matches = face_recognition.compare_faces(all_known_encs, encoding, tolerance=0.50)
-                        if True in matches:
-                            match_idx = matches.index(True)
-                            duplicate_name = known_users[match_idx]["name"]
-                            is_duplicate = True
+                        try:
+                            import face_recognition
+                            all_known_encs = [u["encoding"] for u in known_users]
+                            matches = face_recognition.compare_faces(all_known_encs, encoding, tolerance=0.50)
+                            if True in matches:
+                                match_idx = matches.index(True)
+                                duplicate_name = known_users[match_idx]["name"]
+                                is_duplicate = True
+                        except Exception:
+                            # If face_recognition is unavailable at runtime, skip duplicate-face check.
+                            is_duplicate = False
 
                     if is_duplicate:
                         st.markdown(f'<div class="error-box">Face already registered to <b>{duplicate_name}</b>. Cannot register duplicates.</div>', unsafe_allow_html=True)
