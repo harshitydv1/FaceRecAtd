@@ -141,6 +141,34 @@ with tab_mark:
         
     current_meal = st.selectbox("Current Meal Phase", ["Breakfast", "Lunch", "Dinner"], index=["Breakfast", "Lunch", "Dinner"].index(default_meal))
 
+    with st.expander("Manual Attendance (Fallback)"):
+        active_for_manual = [u for u in get_all_users() if u.get("is_active")]
+        if not active_for_manual:
+            st.markdown('<div class="error-box">No active users found. Please register users first.</div>', unsafe_allow_html=True)
+        else:
+            manual_labels = [f"{u['name']} ({u['employee_id']})" for u in active_for_manual]
+            selected_label = st.selectbox("Select user", manual_labels, key="manual_user_pick_global")
+            selected_user = active_for_manual[manual_labels.index(selected_label)]
+
+            if st.button("Mark Attendance Manually", use_container_width=True, key="manual_mark_btn_global"):
+                status, ts = log_meal(selected_user["id"], selected_user["employee_id"], current_meal)
+                ts_str = ts.strftime("%H:%M:%S") if ts else "--"
+                if status == "success":
+                    st.markdown(
+                        f'<div class="success-box"><b>{selected_user["name"]}</b> logged {current_meal} at {ts_str}.</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif status == "not_enrolled":
+                    st.markdown(
+                        f'<div class="error-box"><b>{selected_user["name"]}</b> is NOT enrolled in the food program!</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif status == "already_logged":
+                    st.markdown(
+                        f'<div class="info-box"><b>{selected_user["name"]}</b> already logged {current_meal} today.</div>',
+                        unsafe_allow_html=True,
+                    )
+
     known = get_all_face_encodings()
     if not known:
         st.markdown('<div class="info-box">No registered faces yet. Face scanner is unavailable right now.</div>', unsafe_allow_html=True)
