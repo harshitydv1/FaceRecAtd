@@ -143,7 +143,35 @@ with tab_mark:
 
     known = get_all_face_encodings()
     if not known:
-        st.markdown('<div class="info-box">No registered faces yet. Go to the <b>Register User</b> tab first.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-box">No registered faces yet. Face scanner is unavailable right now.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-subtitle">You can still mark attendance manually below.</div>', unsafe_allow_html=True)
+
+        active_for_manual = [u for u in get_all_users() if u.get("is_active")]
+        if not active_for_manual:
+            st.markdown('<div class="error-box">No active users found. Please register users first.</div>', unsafe_allow_html=True)
+        else:
+            manual_labels = [f"{u['name']} ({u['employee_id']})" for u in active_for_manual]
+            selected_label = st.selectbox("Manual user selection", manual_labels, key="manual_user_pick")
+            selected_user = active_for_manual[manual_labels.index(selected_label)]
+
+            if st.button("Mark Attendance Manually", use_container_width=True, key="manual_mark_btn"):
+                status, ts = log_meal(selected_user["id"], selected_user["employee_id"], current_meal)
+                ts_str = ts.strftime("%H:%M:%S") if ts else "--"
+                if status == "success":
+                    st.markdown(
+                        f'<div class="success-box"><b>{selected_user["name"]}</b> logged {current_meal} at {ts_str}.</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif status == "not_enrolled":
+                    st.markdown(
+                        f'<div class="error-box"><b>{selected_user["name"]}</b> is NOT enrolled in the food program!</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif status == "already_logged":
+                    st.markdown(
+                        f'<div class="info-box"><b>{selected_user["name"]}</b> already logged {current_meal} today.</div>',
+                        unsafe_allow_html=True,
+                    )
     else:
         method = st.radio("Input method:", ["Webcam Snapshot", "Upload Photo", "Live CCTV Scanner"], horizontal=True)
 
