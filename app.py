@@ -6,6 +6,7 @@ import streamlit as st
 import sys, os
 from datetime import date, timedelta
 import io
+import gc
 import pandas as pd
 import plotly.express as px
 from PIL import Image
@@ -29,6 +30,13 @@ st.set_page_config(
 )
 init_db()
 inject_css()
+
+# Clear RAM periodically
+gc.collect()
+
+@st.cache_data(ttl=600)
+def get_cached_encodings():
+    return get_all_face_encodings()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
