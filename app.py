@@ -8,9 +8,13 @@ from datetime import date, timedelta
 import io
 import gc
 import pandas as pd
-import plotly.express as px
 from PIL import Image
 import base64
+
+try:
+    import plotly.express as px
+except Exception:
+    px = None
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -476,15 +480,20 @@ with tab_reports:
     daily = get_daily_meal_counts(days=14)
     if daily:
         df_daily = pd.DataFrame(daily)
-        fig_line = px.area(
-            df_daily, x="date", y="count",
-            title="Total Meals Logged Trend (Last 14 Days)",
-            labels={"date": "Date", "count": "Meals"},
-            color_discrete_sequence=["#6c63ff"],
-            template="plotly_dark",
-        )
-        fig_line.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#e8eaf6")
-        st.plotly_chart(fig_line, use_container_width=True)
+        if px is not None:
+            fig_line = px.area(
+                df_daily, x="date", y="count",
+                title="Total Meals Logged Trend (Last 14 Days)",
+                labels={"date": "Date", "count": "Meals"},
+                color_discrete_sequence=["#6c63ff"],
+                template="plotly_dark",
+            )
+            fig_line.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#e8eaf6")
+            st.plotly_chart(fig_line, use_container_width=True)
+        else:
+            st.info("Plotly is unavailable in this environment. Showing a basic chart instead.")
+            chart_df = df_daily[["date", "count"]].copy().set_index("date")
+            st.area_chart(chart_df)
     else:
         st.markdown('<div class="info-box">Not enough data.</div>', unsafe_allow_html=True)
 
