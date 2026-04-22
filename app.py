@@ -567,7 +567,11 @@ with tab_reports:
     daily = get_daily_meal_counts(days=14)
     if daily:
         df_daily = pd.DataFrame(daily)
-        if px is not None:
+        df_daily["count"] = pd.to_numeric(df_daily.get("count"), errors="coerce")
+        df_daily = df_daily.dropna(subset=["date", "count"]) 
+        df_daily = df_daily[df_daily["count"] >= 0]
+
+        if not df_daily.empty and px is not None:
             fig_line = px.area(
                 df_daily, x="date", y="count",
                 title="Total Meals Logged Trend (Last 14 Days)",
@@ -577,10 +581,11 @@ with tab_reports:
             )
             fig_line.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#e8eaf6")
             st.plotly_chart(fig_line, use_container_width=True)
+        elif not df_daily.empty:
+            st.info("Plotly is unavailable in this environment. Showing tabular analytics data instead.")
+            st.dataframe(df_daily[["date", "count"]], use_container_width=True, hide_index=True)
         else:
-            st.info("Plotly is unavailable in this environment. Showing a basic chart instead.")
-            chart_df = df_daily[["date", "count"]].copy().set_index("date")
-            st.area_chart(chart_df)
+            st.markdown('<div class="info-box">Not enough valid data to plot analytics.</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="info-box">Not enough data.</div>', unsafe_allow_html=True)
 
